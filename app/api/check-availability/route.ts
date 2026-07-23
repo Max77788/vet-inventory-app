@@ -10,9 +10,6 @@ function createServiceClient() {
         getAll: () => [],
         setAll: () => {},
       },
-      db: {
-        schema: "vet_inventory_app",
-      },
     }
   );
 }

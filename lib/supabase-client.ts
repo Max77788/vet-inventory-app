@@ -5,9 +5,6 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 export function createClient() {
-  return createBrowserClient(supabaseUrl, supabaseAnonKey, {
-    db: {
-      schema: 'vet_inventory_app',
-    },
-  })
+  // Exposed via public schema view pointing at vet_inventory_app data
+  return createBrowserClient(supabaseUrl, supabaseAnonKey)
 }
