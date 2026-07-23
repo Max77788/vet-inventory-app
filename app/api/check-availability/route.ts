@@ -20,7 +20,7 @@ async function checkHotlineCount(query: string): Promise<number | null> {
 
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+    const timeout = setTimeout(() => controller.abort(), 10000);
     const res = await fetch(url, {
       signal: controller.signal,
       headers: {
@@ -28,17 +28,17 @@ async function checkHotlineCount(query: string): Promise<number | null> {
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept-Language": "uk-UA,uk;q=0.9,en;q=0.8",
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Encoding": "gzip, deflate, br",
-        Referer: "https://hotline.ua/",
       },
     });
     clearTimeout(timeout);
 
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.error("Hotline status:", res.status, res.statusText);
+      return null;
+    }
     const html = await res.text();
 
-    // Hotline renders: "X товарX" near search__title
-    const match = html.match(/(\d+)\s*(?:товар|товарів|товари|товарів?)/);
+    const match = html.match(/(\d+)\s*(?:товар|товарів|товари)/);
     if (match) return parseInt(match[1], 10);
 
     const hasTitle = html.includes("За запитом");
@@ -46,7 +46,7 @@ async function checkHotlineCount(query: string): Promise<number | null> {
 
     return null;
   } catch (err: any) {
-    console.error("Hotline fetch error:", err.message);
+    console.error("Hotline fetch error:", err?.message || err);
     return null;
   }
 }
@@ -73,7 +73,6 @@ export async function POST(req: NextRequest) {
   const results: { id: number; status: string; notes: string }[] = [];
 
   for (const product of data) {
-    // Use product name but strip dosage/date noise to improve search
     const query = String(product.name)
       .replace(/до\s*\d{1,2}[\.\,]\d{2}/gi, "")
       .replace(/\(шт\.\)|\(фл\.\)|\(уп\.\)/gi, "")
@@ -103,7 +102,6 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Small delay to avoid rate limiting
     if (data.length > 1) await new Promise((r) => setTimeout(r, 700));
   }
 
