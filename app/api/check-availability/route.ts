@@ -14,17 +14,33 @@ function createServiceClient() {
   );
 }
 
+const STOP_RE = /^\d{1,2}[.,]\d{2}$|^\d+(?:[.,]\d+)?(?:мл|мг|г|кг|шт|таб|капс|доз|амп|фл|уп|%)?$|№|\*|упак|пак|до\s*\d{2}|\d{2}[./]\d{2}/i;
+
 function cleanName(raw: string): string {
-  return raw
-    .replace(/(шт|фл|уп|таб|мл|кг|г|доз|пак|конц|спрей|амп|капс|гран|р-р|сусп|емуль|пор|суп|сироп|крем|мазь|гель)[\s\.\(]*/gi, " ")
-    .replace(/[\(\)\[\]\{\}]/g, " ")
-    .replace(/\d+[\.\,]?\d*\s*(мл|мг|г|кг|шт|таб|д|уп|%|ед)/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 80);
+  // Insert space before price/date-like numbers that are stuck to text
+  let s = raw.replace(/(\D)(\d{1,2}[.,]\d{2})/g, "$1 $2");
+  // Split into tokens
+  const tokens = s.split(/\s+/);
+  const clean: string[] = [];
+
+  for (const tok of tokens) {
+    const t = tok.replace(/^[()\[\]{}*,;:.\s]+|[()\[\]{}*,;:.\s]+$/g, "");
+    if (!t) continue;
+
+    // Stop on packaging / dosage / expiration tokens
+    if (STOP_RE.test(t)) break;
+
+    // Drop isolated unit abbreviations
+    if (/^(?:шт|фл|уп|таб|мл|доз)$/i.test(t)) break;
+
+    clean.push(t);
+    if (clean.length >= 3) break;
+  }
+
+  return clean.join(" ");
 }
 
-async function checkHotlineCount(rawName: string): Promise<{ count: number | null; query: string; rawLen: number }> {
+async function checkHotlineCount(rawName: string): Promise<{ count: number | null; query: string; htmlLen: number }> {
   const query = cleanName(rawName);
   const encoded = encodeURIComponent(query);
   const url = `https://hotline.ua/sr/?q=${encoded}`;
@@ -45,20 +61,20 @@ async function checkHotlineCount(rawName: string): Promise<{ count: number | nul
 
     if (!res.ok) {
       console.error("Hotline status:", res.status, res.statusText);
-      return { count: null, query, rawLen: 0 };
+      return { count: null, query, htmlLen: 0 };
     }
     const html = await res.text();
 
     const match = html.match(/(\d+)\s*(?:товар|товарів|товари)/);
-    if (match) return { count: parseInt(match[1], 10), query, rawLen: html.length };
+    if (match) return { count: parseInt(match[1], 10), query, htmlLen: html.length };
 
     const hasTitle = html.includes("За запитом");
-    if (hasTitle) return { count: 0, query, rawLen: html.length };
+    if (hasTitle) return { count: 0, query, htmlLen: html.length };
 
-    return { count: null, query, rawLen: html.length };
+    return { count: null, query, htmlLen: html.length };
   } catch (err: any) {
     console.error("Hotline fetch error:", err?.message || err);
-    return { count: null, query, rawLen: 0 };
+    return { count: null, query, htmlLen: 0 };
   }
 }
 
@@ -86,20 +102,18 @@ export async function POST(req: NextRequest) {
     status: string;
     notes: string;
     query: string;
-    rawName: string;
   }[] = [];
 
   for (const product of data) {
     const rawName = String(product.name);
-    const { count, query, rawLen } = await checkHotlineCount(rawName);
+    const { count, query, htmlLen } = await checkHotlineCount(rawName);
 
     if (count === null) {
       results.push({
         id: product.id,
         status: "unknown",
-        notes: "Hotline lookup failed",
+        notes: htmlLen > 0 ? "Hotline parse miss" : "Hotline lookup failed",
         query,
-        rawName,
       });
     } else if (count > 0) {
       results.push({
@@ -107,7 +121,6 @@ export async function POST(req: NextRequest) {
         status: "available",
         notes: `Hotline found ${count} offer(s)`,
         query,
-        rawName,
       });
     } else {
       results.push({
@@ -115,7 +128,6 @@ export async function POST(req: NextRequest) {
         status: "unavailable",
         notes: "No Hotline results",
         query,
-        rawName,
       });
     }
 
