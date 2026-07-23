@@ -14,7 +14,18 @@ function createServiceClient() {
   );
 }
 
-async function checkHotlineCount(query: string): Promise<number | null> {
+function cleanName(raw: string): string {
+  return raw
+    .replace(/(шт|фл|уп|таб|мл|кг|г|доз|пак|конц|спрей|амп|капс|гран|р-р|сусп|емуль|пор|суп|сироп|крем|мазь|гель)[\s\.\(]*/gi, " ")
+    .replace(/[\(\)\[\]\{\}]/g, " ")
+    .replace(/\d+[\.\,]?\d*\s*(мл|мг|г|кг|шт|таб|д|уп|%|ед)/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
+}
+
+async function checkHotlineCount(rawName: string): Promise<{ count: number | null; query: string; rawLen: number }> {
+  const query = cleanName(rawName);
   const encoded = encodeURIComponent(query);
   const url = `https://hotline.ua/sr/?q=${encoded}`;
 
@@ -34,20 +45,20 @@ async function checkHotlineCount(query: string): Promise<number | null> {
 
     if (!res.ok) {
       console.error("Hotline status:", res.status, res.statusText);
-      return null;
+      return { count: null, query, rawLen: 0 };
     }
     const html = await res.text();
 
     const match = html.match(/(\d+)\s*(?:товар|товарів|товари)/);
-    if (match) return parseInt(match[1], 10);
+    if (match) return { count: parseInt(match[1], 10), query, rawLen: html.length };
 
     const hasTitle = html.includes("За запитом");
-    if (hasTitle) return 0;
+    if (hasTitle) return { count: 0, query, rawLen: html.length };
 
-    return null;
+    return { count: null, query, rawLen: html.length };
   } catch (err: any) {
     console.error("Hotline fetch error:", err?.message || err);
-    return null;
+    return { count: null, query, rawLen: 0 };
   }
 }
 
@@ -70,35 +81,41 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error?.message || "Not found" }, { status: 500 });
   }
 
-  const results: { id: number; status: string; notes: string }[] = [];
+  const results: {
+    id: number;
+    status: string;
+    notes: string;
+    query: string;
+    rawName: string;
+  }[] = [];
 
   for (const product of data) {
-    const query = String(product.name)
-      .replace(/до\s*\d{1,2}[\.\,]\d{2}/gi, "")
-      .replace(/\(шт\.\)|\(фл\.\)|\(уп\.\)/gi, "")
-      .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, 80);
-
-    const count = await checkHotlineCount(query);
+    const rawName = String(product.name);
+    const { count, query, rawLen } = await checkHotlineCount(rawName);
 
     if (count === null) {
       results.push({
         id: product.id,
         status: "unknown",
         notes: "Hotline lookup failed",
+        query,
+        rawName,
       });
     } else if (count > 0) {
       results.push({
         id: product.id,
         status: "available",
         notes: `Hotline found ${count} offer(s)`,
+        query,
+        rawName,
       });
     } else {
       results.push({
         id: product.id,
         status: "unavailable",
         notes: "No Hotline results",
+        query,
+        rawName,
       });
     }
 
