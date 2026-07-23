@@ -1,0 +1,126 @@
+import { createServerClient } from "@supabase/ssr";
+import { NextRequest, NextResponse } from "next/server";
+
+function createServiceClient() {
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      cookies: {
+        getAll: () => [],
+        setAll: () => {},
+      },
+      db: {
+        schema: "vet_inventory_app",
+      },
+    }
+  );
+}
+
+async function checkHotlineCount(query: string): Promise<number | null> {
+  const encoded = encodeURIComponent(query);
+  const url = `https://hotline.ua/sr/?q=${encoded}`;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "uk-UA,uk;q=0.9,en;q=0.8",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Encoding": "gzip, deflate, br",
+        Referer: "https://hotline.ua/",
+      },
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) return null;
+    const html = await res.text();
+
+    // Hotline renders: "X товарX" near search__title
+    const match = html.match(/(\d+)\s*(?:товар|товарів|товари|товарів?)/);
+    if (match) return parseInt(match[1], 10);
+
+    const hasTitle = html.includes("За запитом");
+    if (hasTitle) return 0;
+
+    return null;
+  } catch (err: any) {
+    console.error("Hotline fetch error:", err.message);
+    return null;
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const { ids } = await req.json();
+  if (!Array.isArray(ids) || ids.length === 0 || ids.length > 20) {
+    return NextResponse.json(
+      { error: "Provide 1-20 product ids" },
+      { status: 400 }
+    );
+  }
+
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select("id, name, barcode")
+    .in("id", ids);
+
+  if (error || !data) {
+    return NextResponse.json({ error: error?.message || "Not found" }, { status: 500 });
+  }
+
+  const results: { id: number; status: string; notes: string }[] = [];
+
+  for (const product of data) {
+    // Use product name but strip dosage/date noise to improve search
+    const query = String(product.name)
+      .replace(/до\s*\d{1,2}[\.\,]\d{2}/gi, "")
+      .replace(/\(шт\.\)|\(фл\.\)|\(уп\.\)/gi, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 80);
+
+    const count = await checkHotlineCount(query);
+
+    if (count === null) {
+      results.push({
+        id: product.id,
+        status: "unknown",
+        notes: "Hotline lookup failed",
+      });
+    } else if (count > 0) {
+      results.push({
+        id: product.id,
+        status: "available",
+        notes: `Hotline found ${count} offer(s)`,
+      });
+    } else {
+      results.push({
+        id: product.id,
+        status: "unavailable",
+        notes: "No Hotline results",
+      });
+    }
+
+    // Small delay to avoid rate limiting
+    if (data.length > 1) await new Promise((r) => setTimeout(r, 700));
+  }
+
+  for (const r of results) {
+    await supabase
+      .from("products")
+      .update({
+        availability_status: r.status,
+        availability_notes: r.notes,
+        availability_source: "hotline.ua",
+        availability_checked_at: new Date().toISOString(),
+      })
+      .eq("id", r.id);
+  }
+
+  return NextResponse.json({ checked: results.length, results });
+}
