@@ -5,10 +5,14 @@ import { Filters } from "@/components/filters";
 import { Pagination } from "@/components/pagination";
 import { ProductTable } from "@/components/product-table";
 import { Product, ProductFilters } from "@/lib/types";
-import { fetchProducts, checkAvailabilityAction, recountOrigins } from "@/lib/api";
+import {
+  fetchProducts,
+  fetchGs1Countries,
+  fetchUsdRate,
+  checkAvailabilityAction,
+  recountOrigins,
+} from "@/lib/api";
 import { cn } from "@/lib/utils";
-
-const PAGE_SIZE = 50;
 
 export default function ProductList() {
   const [filters, setFilters] = useState<ProductFilters>({
@@ -17,6 +21,11 @@ export default function ProductList() {
     availability: "all",
     minPrice: "",
     maxPrice: "",
+    hasBarcode: "all",
+    gs1Country: "",
+    pageSize: 50,
+    sortBy: "row_no",
+    sortOrder: "asc",
   });
   const [page, setPage] = useState(1);
   const [products, setProducts] = useState<Product[]>([]);
@@ -24,6 +33,9 @@ export default function ProductList() {
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<number[]>([]);
   const [originCounts, setOriginCounts] = useState({ Ukraine: 0, Abroad: 0, Unknown: 0 });
+  const [gs1Countries, setGs1Countries] = useState<string[]>([]);
+  const [usdRate, setUsdRate] = useState<number | null>(null);
+  const [rateError, setRateError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,7 +43,7 @@ export default function ProductList() {
     setLoading(true);
     setError(null);
     try {
-      const result = await fetchProducts(filters, page, PAGE_SIZE);
+      const result = await fetchProducts(filters, page);
       setProducts(result.data);
       setCount(result.count);
     } catch (err: any) {
@@ -47,12 +59,23 @@ export default function ProductList() {
 
   useEffect(() => {
     recountOrigins().then(setOriginCounts).catch(console.error);
+    fetchGs1Countries().then(setGs1Countries).catch(console.error);
+    fetchUsdRate()
+      .then((rate) => {
+        setUsdRate(rate);
+        setRateError(null);
+      })
+      .catch((err) => setRateError(err.message || "Could not load USD rate"));
   }, []);
 
   useEffect(() => {
     setPage(1);
     setSelected([]);
   }, [filters]);
+
+  function updateFilters(next: ProductFilters) {
+    setFilters(next);
+  }
 
   function toggleSelect(id: number) {
     setSelected((prev) =>
@@ -88,81 +111,91 @@ export default function ProductList() {
     setFilters((f) => ({ ...f, origin }));
   }
 
-  const totalPages = Math.ceil(count / PAGE_SIZE);
+  const totalPages = Math.ceil(count / filters.pageSize);
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-2 sm:grid-cols-3">
+    <div className="space-y-5">
+      <div className="grid gap-3 sm:grid-cols-3">
         <button
           onClick={() => filterByOrigin("Ukraine")}
-          className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-left transition hover:bg-emerald-100"
+          className="rounded-xl border border-emerald-300 bg-emerald-100 p-5 text-left shadow-sm transition hover:bg-emerald-200 active:bg-emerald-300 dark:border-emerald-700 dark:bg-emerald-900 dark:hover:bg-emerald-800"
         >
-          <div className="text-xs font-medium text-emerald-700">Ukraine origin</div>
-          <div className="text-2xl font-bold text-emerald-900">{originCounts.Ukraine}</div>
+          <div className="text-sm font-bold text-emerald-900 dark:text-emerald-200">Ukraine origin</div>
+          <div className="mt-1 text-4xl font-black text-emerald-950 dark:text-emerald-50">{originCounts.Ukraine}</div>
         </button>
         <button
           onClick={() => filterByOrigin("Abroad")}
-          className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-left transition hover:bg-amber-100"
+          className="rounded-xl border border-amber-300 bg-amber-100 p-5 text-left shadow-sm transition hover:bg-amber-200 active:bg-amber-300 dark:border-amber-700 dark:bg-amber-900 dark:hover:bg-amber-800"
         >
-          <div className="text-xs font-medium text-amber-700">Abroad origin</div>
-          <div className="text-2xl font-bold text-amber-900">{originCounts.Abroad}</div>
+          <div className="text-sm font-bold text-amber-900 dark:text-amber-200">Abroad origin</div>
+          <div className="mt-1 text-4xl font-black text-amber-950 dark:text-amber-50">{originCounts.Abroad}</div>
         </button>
         <button
           onClick={() => filterByOrigin("Unknown")}
-          className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-left transition hover:bg-zinc-100"
+          className="rounded-xl border border-zinc-300 bg-zinc-100 p-5 text-left shadow-sm transition hover:bg-zinc-200 active:bg-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
         >
-          <div className="text-xs font-medium text-zinc-600">Unknown origin</div>
-          <div className="text-2xl font-bold text-zinc-900">{originCounts.Unknown}</div>
+          <div className="text-sm font-bold text-zinc-900 dark:text-zinc-200">Unknown origin</div>
+          <div className="mt-1 text-4xl font-black text-zinc-950 dark:text-zinc-50">{originCounts.Unknown}</div>
         </button>
       </div>
 
-      <Filters filters={filters} onChange={setFilters} />
+      <Filters filters={filters} gs1Countries={gs1Countries} onChange={updateFilters} />
 
-      <div className="flex items-center justify-between">
-        <div className="text-sm text-zinc-600">
-          Showing <span className="font-semibold text-zinc-900">{products.length}</span> of{" "}
-          <span className="font-semibold text-zinc-900">{count}</span> products
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="text-base font-medium text-zinc-700 dark:text-zinc-300">
+          Showing <span className="font-bold text-zinc-950 dark:text-white">{products.length}</span> of{" "}
+          <span className="font-bold text-zinc-950 dark:text-white">{count}</span> products
           {selected.length > 0 && (
             <span className="ml-2">({selected.length} selected)</span>
           )}
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={load}
-            disabled={loading}
-            className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
-          >
-            Refresh
-          </button>
-          <button
-            onClick={checkSelected}
-            disabled={selected.length === 0 || checking}
-            className={cn(
-              "rounded-md px-4 py-2 text-sm font-medium text-white transition",
-              selected.length === 0
-                ? "cursor-not-allowed bg-zinc-400"
-                : "bg-indigo-600 hover:bg-indigo-700"
-            )}
-          >
-            {checking ? "Checking online..." : `Check availability (${selected.length})`}
-          </button>
+        <div className="flex items-center gap-3">
+          {rateError ? (
+            <span className="text-sm font-semibold text-rose-600 dark:text-rose-400">{rateError}</span>
+          ) : usdRate ? (
+            <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+              1 USD = <span className="font-bold text-zinc-950 dark:text-white">{usdRate.toFixed(2)} UAH</span>
+            </span>
+          ) : null}
+          <div className="flex gap-2">
+            <button
+              onClick={load}
+              disabled={loading}
+              className="rounded-md border border-zinc-300 bg-white px-4 py-2.5 text-base font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+            >
+              Refresh
+            </button>
+            <button
+              onClick={checkSelected}
+              disabled={selected.length === 0 || checking}
+              className={cn(
+                "rounded-md px-4 py-2.5 text-base font-semibold text-white shadow-sm transition",
+                selected.length === 0
+                  ? "cursor-not-allowed bg-zinc-400"
+                  : "bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800"
+              )}
+            >
+              {checking ? "Checking online..." : `Check availability (${selected.length})`}
+            </button>
+          </div>
         </div>
       </div>
 
       {error && (
-        <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+        <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-base font-semibold text-rose-800 dark:border-rose-900 dark:bg-rose-950 dark:text-rose-200">
           {error}
         </div>
       )}
 
       {loading ? (
-        <div className="rounded-lg border border-zinc-200 bg-white p-12 text-center text-zinc-500">
+        <div className="rounded-lg border border-zinc-200 bg-white p-12 text-center text-lg font-semibold text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
           Loading...
         </div>
       ) : (
         <ProductTable
           products={products}
           selectedIds={selected}
+          usdRate={usdRate}
           onToggleSelect={toggleSelect}
           onToggleSelectAll={toggleSelectAll}
           allSelectedOnPage={selected.length === products.length && products.length > 0}

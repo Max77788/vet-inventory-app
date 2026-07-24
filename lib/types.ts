@@ -20,4 +20,9 @@ export interface ProductFilters {
   availability: Product["availability_status"] | "all";
   minPrice: string;
   maxPrice: string;
+  hasBarcode: "all" | "yes" | "no";
+  gs1Country: string;
+  pageSize: number;
+  sortBy: "row_no" | "name" | "price";
+  sortOrder: "asc" | "desc";
 }

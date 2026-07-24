@@ -14,6 +14,17 @@ export function formatPrice(price: number | null) {
   });
 }
 
+export function formatUsd(price: number | null, rate: number | null) {
+  if (price === null || price === undefined || !rate || rate <= 0) return "-";
+  const usd = price / rate;
+  return usd.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
 export function badgeClass(type: Product["origin"] | Product["availability_status"]) {
   switch (type) {
     case "Ukraine":

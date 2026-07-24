@@ -15,11 +15,11 @@ export function Pagination({ page, totalPages, onChange }: PaginationProps) {
   );
 
   return (
-    <div className="flex items-center justify-center gap-1 py-4">
+    <div className="flex items-center justify-center gap-2 py-5">
       <button
         onClick={() => onChange(Math.max(1, page - 1))}
         disabled={page === 1}
-        className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+        className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-base font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
       >
         Prev
       </button>
@@ -30,9 +30,9 @@ export function Pagination({ page, totalPages, onChange }: PaginationProps) {
             {showGap && <span className="px-2 text-zinc-400">...</span>}
             <button
               onClick={() => onChange(p)}
-              className={`rounded-md border px-3 py-1.5 text-sm ${
+              className={`rounded-md border px-4 py-2 text-base font-medium ${
                 p === page
-                  ? "border-indigo-600 bg-indigo-600 font-medium text-white"
+                  ? "border-indigo-600 bg-indigo-600 text-white"
                   : "border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50"
               }`}
             >
@@ -44,7 +44,7 @@ export function Pagination({ page, totalPages, onChange }: PaginationProps) {
       <button
         onClick={() => onChange(Math.min(totalPages, page + 1))}
         disabled={page === totalPages}
-        className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+        className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-base font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
       >
         Next
       </button>
