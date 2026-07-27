@@ -10,19 +10,34 @@ export interface Product {
   availability_checked_at: string | null;
   availability_source: string | null;
   availability_notes: string | null;
+  category: string;
+  is_own_import: boolean;
+  is_featured: boolean;
+  is_promo: boolean;
+  promo_label: string | null;
+  is_active: boolean;
+  in_stock: boolean;
   created_at: string;
   updated_at: string;
 }
 
 export interface ProductFilters {
   search: string;
-  origin: Product["origin"] | "all";
-  availability: Product["availability_status"] | "all";
-  minPrice: string;
-  maxPrice: string;
-  hasBarcode: "all" | "yes" | "no";
-  gs1Country: string;
+  category: string;
+  onlyPriority: boolean;
   pageSize: number;
   sortBy: "row_no" | "name" | "price";
   sortOrder: "asc" | "desc";
+}
+
+export interface CartItem {
+  product: Product;
+  quantity: number;
+}
+
+export interface QuoteRequestInput {
+  customerName: string;
+  customerPhone?: string;
+  customerComment?: string;
+  items: Array<{ productId: number; quantity: number }>;
 }

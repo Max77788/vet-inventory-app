@@ -1,0 +1,4 @@
+barcode,name,category,is_own_import,is_featured,is_promo,promo_label,in_stock
+,,,,,,,
+# Fill either barcode or name. Example:
+# 8713184146110,,Антибіотики,true,true,true,АКЦІЯ,true
