@@ -31,8 +31,8 @@ export function CartDrawer({ items, onChangeQuantity, onSubmit }: CartDrawerProp
   }
 
   return <>
-    <button onClick={() => setOpen(true)} className="fixed bottom-4 right-4 z-30 rounded-2xl bg-emerald-600 px-5 py-4 text-base font-black text-white shadow-xl transition hover:bg-emerald-700 sm:bottom-6 sm:right-6">
-      Кошик {quantity ? `· ${quantity}` : ""}
+    <button type="button" onClick={() => setOpen(true)} aria-label={`Відкрити кошик${quantity ? `, ${quantity} товарів` : ""}`} className="fixed bottom-4 right-4 z-30 rounded-2xl border-2 border-emerald-300 bg-emerald-700 px-5 py-4 text-base font-black text-white shadow-2xl transition hover:bg-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-200 sm:bottom-6 sm:right-6">
+      <span>Кошик</span>{quantity > 0 && <span className="ml-2 inline-flex min-w-6 items-center justify-center rounded-full bg-white px-2 py-0.5 text-sm text-emerald-900">{quantity}</span>}
     </button>
     {open && <div className="fixed inset-0 z-40 bg-zinc-950/40" onClick={() => setOpen(false)}>
       <aside onClick={(e) => e.stopPropagation()} className="ml-auto flex h-full w-full max-w-xl flex-col bg-white shadow-2xl">

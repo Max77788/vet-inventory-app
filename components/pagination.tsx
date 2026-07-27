@@ -21,7 +21,7 @@ export function Pagination({ page, totalPages, onChange }: PaginationProps) {
         disabled={page === 1}
         className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-base font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
       >
-        Prev
+        Назад
       </button>
       {visible.map((p, idx) => {
         const showGap = idx > 0 && visible[idx - 1] !== p - 1;
@@ -46,7 +46,7 @@ export function Pagination({ page, totalPages, onChange }: PaginationProps) {
         disabled={page === totalPages}
         className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-base font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
       >
-        Next
+        Далі
       </button>
     </div>
   );

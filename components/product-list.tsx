@@ -48,11 +48,14 @@ export default function ProductList() {
   };
   const totalPages = Math.max(1, Math.ceil(count / filters.pageSize));
 
-  return <div className="space-y-5 pb-20">
+  return <div className="space-y-5 pb-24">
     <Filters filters={filters} categories={categories} onChange={setFilters} />
-    <div className="flex flex-wrap items-center justify-between gap-3"><p className="font-semibold text-zinc-700">Знайдено <strong className="text-zinc-950">{count}</strong> товарів. Наш імпорт, хіти й акції показані першими.</p><button onClick={load} className="rounded-xl border border-zinc-300 bg-white px-4 py-2 font-bold hover:bg-zinc-50">Оновити каталог</button></div>
-    {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 font-semibold text-rose-800">{error}</div>}
-    {loading ? <div className="rounded-2xl border border-zinc-200 bg-white p-12 text-center font-bold text-zinc-600">Завантажуємо каталог...</div> : <ProductTable products={products} cartQuantities={quantities} onAdd={add} />}
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-zinc-200 bg-zinc-50 p-4">
+      <p aria-live="polite" className="text-base font-semibold text-zinc-700">Знайдено <strong className="rounded-md bg-zinc-950 px-2 py-1 text-lg text-white">{count}</strong> товарів <span className="hidden sm:inline">· Наш імпорт, хіти й акції показані першими.</span></p>
+      <button type="button" onClick={load} className="rounded-xl border-2 border-zinc-400 bg-white px-4 py-2 font-black text-zinc-900 shadow-sm transition hover:border-zinc-950 hover:bg-zinc-950 hover:text-white focus:outline-none focus:ring-4 focus:ring-zinc-300">Оновити каталог</button>
+    </div>
+    {error && <div role="alert" className="rounded-xl border-2 border-rose-300 bg-rose-50 p-4 font-semibold text-rose-800">{error}</div>}
+    {loading ? <div className="rounded-2xl border-2 border-zinc-200 bg-white p-12 text-center font-bold text-zinc-600">Завантажуємо каталог...</div> : <ProductTable products={products} cartQuantities={quantities} onAdd={add} />}
     <Pagination page={page} totalPages={totalPages} onChange={setPage} />
     <CartDrawer items={cartItems} onChangeQuantity={changeQuantity} onSubmit={sendQuote} />
   </div>;
