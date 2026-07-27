@@ -1,4 +1,4 @@
-barcode,name,category,is_own_import,is_featured,is_promo,promo_label,in_stock
+barcode,name,category,is_own_import,is_featured,is_promo,promo_label,image_url,in_stock
 ,,,,,,,
 # Fill either barcode or name. Example:
-# 8713184146110,,Антибіотики,true,true,true,АКЦІЯ,true
+# 8713184146110,,Антибіотики,true,true,true,АКЦІЯ,https://example.com/product.jpg,true

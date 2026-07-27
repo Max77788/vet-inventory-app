@@ -27,6 +27,7 @@ ALTER TABLE vet_inventory_app.products
     ADD COLUMN IF NOT EXISTS is_featured BOOLEAN NOT NULL DEFAULT FALSE,
     ADD COLUMN IF NOT EXISTS is_promo BOOLEAN NOT NULL DEFAULT FALSE,
     ADD COLUMN IF NOT EXISTS promo_label TEXT,
+    ADD COLUMN IF NOT EXISTS image_url TEXT,
     ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE,
     ADD COLUMN IF NOT EXISTS in_stock BOOLEAN NOT NULL DEFAULT TRUE;
 
@@ -103,7 +104,7 @@ SELECT
     id, row_no, barcode, name, price, origin, gs1_country_code,
     availability_status, availability_checked_at, availability_source, availability_notes,
     created_at, updated_at,
-    category, is_own_import, is_featured, is_promo, promo_label, is_active, in_stock
+    category, is_own_import, is_featured, is_promo, promo_label, image_url, is_active, in_stock
 FROM vet_inventory_app.products;
 
 GRANT SELECT ON public.products TO anon, authenticated, service_role;

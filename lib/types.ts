@@ -15,6 +15,7 @@ export interface Product {
   is_featured: boolean;
   is_promo: boolean;
   promo_label: string | null;
+  image_url?: string | null;
   is_active: boolean;
   in_stock: boolean;
   created_at: string;

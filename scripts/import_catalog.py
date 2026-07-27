@@ -7,7 +7,7 @@ Usage:
 
 The supplier file must contain No, Barcode, Name and Price columns (header may be
 anywhere in the first 10 rows). Metadata is optional and has columns:
-barcode,name,category,is_own_import,is_featured,is_promo,promo_label,in_stock
+barcode,name,category,is_own_import,is_featured,is_promo,promo_label,image_url,in_stock
 Use barcode when possible. A matching name is accepted as a fallback.
 """
 import argparse, csv, os, re
@@ -20,7 +20,7 @@ from barcode_origin import classify_origin
 CATEGORY_RULES = [
     ("Антибіотики", ("антибі", "амокси", "клава", "цеф", "енрофло", "докси", "марбо")),
     ("Протипаразитарні", ("блох", "кліщ", "глист", "паразит", "іверм", "селамект", "мільбем")),
-    ("Вакцини", ("вакцин", "nobivac", "eurican", "biocan")),
+    ("Вакцини", ("вакцин", "nobivac", "eurican", "biocan", "вангард", "vanguard", "мультикан", "дурамун")),
     ("Знеболювальні та протизапальні", ("мелокс", "карпроф", "кетопроф", "знебол")),
     ("Вітаміни та добавки", ("вітам", "омега", "кальц", "пробіот", "добавк")),
     ("Догляд та гігієна", ("шампун", "сервет", "пелюш", "гігієн", "лосьйон")),
@@ -64,7 +64,7 @@ def apply_metadata(cursor, path: Path):
     with path.open(newline="", encoding="utf-8-sig") as handle:
         for row in csv.DictReader(handle):
             fields = {key: value.strip() for key, value in row.items() if key and value is not None}
-            updates = {key: fields[key] for key in ("category", "promo_label") if fields.get(key)}
+            updates = {key: fields[key] for key in ("category", "promo_label", "image_url") if fields.get(key)}
             for key in ("is_own_import", "is_featured", "is_promo", "in_stock"):
                 value = as_bool(fields.get(key));
                 if value is not None: updates[key] = value

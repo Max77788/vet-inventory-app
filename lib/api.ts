@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase-client";
+import { catalogSearchFilter } from "@/lib/catalog-search";
 import { Product, ProductFilters, QuoteRequestInput } from "@/lib/types";
 
 export async function fetchProducts(
@@ -14,7 +15,8 @@ export async function fetchProducts(
     .eq("is_active", true)
     .eq("in_stock", true);
 
-  if (filters.search.trim()) query = query.ilike("name", `%${filters.search.trim()}%`);
+  const searchFilter = catalogSearchFilter(filters.search);
+  if (searchFilter) query = query.or(searchFilter);
   if (filters.category) query = query.eq("category", filters.category);
   if (filters.onlyPriority) query = query.or("is_own_import.eq.true,is_featured.eq.true,is_promo.eq.true");
 
